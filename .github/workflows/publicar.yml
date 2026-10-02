@@ -13,12 +13,19 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     steps:
+      - name: Verificar credencial de leitura da fonte
+        env:
+          SOURCE_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: test -n "$SOURCE_TOKEN" || (echo "::error::DEPLOY_TOKEN não está configurado no repositório de deploy." && exit 1)
+
       - name: Baixar código-fonte da Luxi
         uses: actions/checkout@v4
         with:
           repository: Cleberamonjr/organize-jewelry
           ref: main
           path: source
+          token: ${{ secrets.DEPLOY_TOKEN }}
+          persist-credentials: false
 
       - name: Configurar Node
         uses: actions/setup-node@v4
