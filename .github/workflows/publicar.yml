@@ -1,0 +1,60 @@
+name: Build e publicar Luxi
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código-fonte da Luxi
+        uses: actions/checkout@v4
+        with:
+          repository: Cleberamonjr/organize-jewelry
+          ref: main
+          path: source
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: source
+        run: npm ci
+
+      - name: Validar aplicação
+        working-directory: source
+        run: npm run verificar
+        env:
+          VITE_SUPABASE_URL: https://eraxjtfedswksiyigasf.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_n4NDtzQFfOU3f2p2RFUvVQ_ZLqtFmsx
+
+      - name: Gerar build de produção
+        working-directory: source
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://eraxjtfedswksiyigasf.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_n4NDtzQFfOU3f2p2RFUvVQ_ZLqtFmsx
+
+      - name: Publicar bundle no repositório conectado ao Cloudflare
+        shell: bash
+        run: |
+          rsync -a --delete source/dist/ ./ --exclude '.git/' --exclude '.github/'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração no bundle."
+            exit 0
+          fi
+          git commit -m "build: publicar versão atual da Luxi [skip ci]"
+          git push origin HEAD:main
