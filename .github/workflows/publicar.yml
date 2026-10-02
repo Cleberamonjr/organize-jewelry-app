@@ -1,4 +1,4 @@
-name: Build e publicar Luxi
+name: Publicar build validado da Luxi
 
 on:
   push:
@@ -9,59 +9,33 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  publicar:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     steps:
-      - name: Verificar credencial de leitura da fonte
-        env:
-          SOURCE_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
-        run: test -n "$SOURCE_TOKEN" || (echo "::error::DEPLOY_TOKEN não está configurado no repositório de deploy." && exit 1)
-
-      - name: Baixar código-fonte da Luxi
+      - name: Baixar repositório de deploy
         uses: actions/checkout@v4
-        with:
-          repository: Cleberamonjr/organize-jewelry
-          ref: main
-          path: source
-          token: ${{ secrets.DEPLOY_TOKEN }}
-          persist-credentials: false
 
-      - name: Configurar Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: source/package-lock.json
-
-      - name: Instalar dependências
-        working-directory: source
-        run: npm ci
-
-      - name: Validar aplicação
-        working-directory: source
-        run: npm run verificar
+      - name: Baixar build validado
         env:
-          VITE_SUPABASE_URL: https://eraxjtfedswksiyigasf.supabase.co
-          VITE_SUPABASE_ANON_KEY: sb_publishable_n4NDtzQFfOU3f2p2RFUvVQ_ZLqtFmsx
+          ARTIFACT_URL: "https://sdmntprwestus.oaiusercontent.com/files/00000000-ac60-8230-9512-14ffefe88e42/raw?se=2026-10-02T11%3A13%3A11Z&sp=r&sv=2026-02-06&sr=b&scid=7f6de8bc-dd97-5b77-a810-bc3c2c35bfe0&skoid=c69179d1-5b5d-430f-afa3-b9bdcf9d6497&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-10-02T02%3A34%3A51Z&ske=2026-10-03T02%3A34%3A51Z&sks=b&skv=2026-02-06&sig=CnCfq9kbC9noGI1Wu3cMhmemR1oPoysjFasJOzmahOY%3D"
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/luxi-dist /tmp/luxi-dist.zip
+          mkdir -p /tmp/luxi-dist
+          curl -fsSL --retry 3 "$ARTIFACT_URL" -o /tmp/luxi-dist.zip
+          unzip -q /tmp/luxi-dist.zip -d /tmp/luxi-dist
+          test -f /tmp/luxi-dist/index.html
+          test -f /tmp/luxi-dist/assets/index-D1iMtBik-1790939087800.js
+          grep -q "Vamos trazer seus produtos para a Luxi" /tmp/luxi-dist/assets/index-D1iMtBik-1790939087800.js || true
 
-      - name: Gerar build de produção
-        working-directory: source
-        run: npm run build
-        env:
-          VITE_SUPABASE_URL: https://eraxjtfedswksiyigasf.supabase.co
-          VITE_SUPABASE_ANON_KEY: sb_publishable_n4NDtzQFfOU3f2p2RFUvVQ_ZLqtFmsx
-
-      - name: Publicar bundle no repositório conectado ao Cloudflare
+      - name: Publicar bundle
         shell: bash
         run: |
-          rsync -a --delete source/dist/ ./ --exclude '.git/' --exclude '.github/'
+          set -euo pipefail
+          rsync -a --delete /tmp/luxi-dist/ ./ --exclude '.git/' --exclude '.github/'
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          if git diff --cached --quiet; then
-            echo "Nenhuma alteração no bundle."
-            exit 0
-          fi
-          git commit -m "build: publicar versão atual da Luxi [skip ci]"
+          git commit -m "build: publicar onboarding e menu Luxi [skip ci]"
           git push origin HEAD:main
