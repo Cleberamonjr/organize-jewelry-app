@@ -27,6 +27,7 @@ jobs:
           repository: Cleberamonjr/organize-jewelry
           ref: main
           path: _fonte
+          token: ${{ secrets.LUXI_SOURCE_TOKEN }}
 
       - name: Preparar Node
         uses: actions/setup-node@v6
