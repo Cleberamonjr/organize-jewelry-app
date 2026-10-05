@@ -1,27 +1,43 @@
-/* Vitrine publica. Sem edicao. So no link ?m=. */
+/* Vitrine publica. Quantidade na selecao. So no link ?m=. */
 (function () {
   if (!/[?&]m=/.test(location.search)) return;
+  var qtd = {};
   var css = document.createElement("style");
-  css.textContent = [
-    ".lona-topo{padding:32px 20px 12px;text-align:center}",
-    ".lona-nome{font-size:36px;letter-spacing:.06em;font-weight:500;margin:0}",
-    ".lona-frase{margin:10px auto 0;max-width:26ch;font-size:15px;line-height:1.5;opacity:.78}",
-    ".lona-filete{width:36px;height:1px;margin:18px auto 0;background:currentColor;opacity:.3}",
-    ".lona-rodape{margin-top:36px;padding:20px 16px 28px;text-align:center;font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.62}"
-  ].join("");
+  css.textContent = ".luxi-qtd{display:flex;align-items:center;gap:8px;margin-top:8px;font:13px 'Helvetica Neue',Arial,sans-serif}.luxi-qtd button{width:32px;height:32px;border-radius:50%;border:1px solid rgba(58,47,53,.2);background:#fff;cursor:pointer}";
   document.head.appendChild(css);
   function ajustar() {
-    var antiga = document.getElementById("luxi-fontes");
-    if (antiga) antiga.remove();
     document.querySelectorAll("button, a").forEach(function (el) {
       var t = (el.textContent || "").trim();
-      if (t === "Carrinho") el.textContent = "Seleção";
+      if (t === "Carrinho" || t.indexOf("Seleção") === 0) {
+        if (t.indexOf("·") < 0) el.textContent = "Seleção";
+      }
       if (t === "Por no carrinho") el.textContent = "Guardar na seleção";
+      if (t.indexOf("No carrinho") === 0) el.textContent = "Na seleção ✓";
+    });
+    document.querySelectorAll(".lona-peca").forEach(function (card, i) {
+      var nome = ((card.querySelector(".lona-peca-nome") || {}).textContent || "peça " + i).trim();
+      var na = /Na seleção/.test(card.innerText);
+      var box = card.querySelector(".luxi-qtd");
+      if (!na) { if (box) box.remove(); return; }
+      if (!qtd[nome]) qtd[nome] = 1;
+      if (!box) {
+        box = document.createElement("div");
+        box.className = "luxi-qtd";
+        var menos = document.createElement("button"); menos.type = "button"; menos.textContent = "−";
+        var n = document.createElement("span");
+        var mais = document.createElement("button"); mais.type = "button"; mais.textContent = "+";
+        menos.onclick = function (e) { e.stopPropagation(); qtd[nome] = Math.max(1, qtd[nome] - 1); n.textContent = qtd[nome] + (qtd[nome] > 1 ? " peças" : " peça"); };
+        mais.onclick = function (e) { e.stopPropagation(); qtd[nome] += 1; n.textContent = qtd[nome] + " peças"; };
+        box.appendChild(menos); box.appendChild(n); box.appendChild(mais);
+        var acoes = card.querySelector(".lona-acoes") || card;
+        acoes.appendChild(box);
+      }
+      box.querySelector("span").textContent = qtd[nome] + (qtd[nome] > 1 ? " peças" : " peça");
     });
     var rodape = document.querySelector(".lona-rodape");
     if (rodape && rodape.textContent.indexOf("sob consulta") < 0) rodape.textContent = "Peças sob consulta · entrega a combinar";
-    var nome = (document.querySelector(".lona-nome") || {}).textContent;
-    if (nome) document.title = nome.trim();
+    var nomeLoja = (document.querySelector(".lona-nome") || {}).textContent;
+    if (nomeLoja) document.title = nomeLoja.trim();
   }
   setInterval(ajustar, 800);
 })();
